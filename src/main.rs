@@ -44,6 +44,11 @@ fn test_json() -> Json<Guitar> {
     
 #[post("/submit_csv", format = "text/csv", data = "<data>")]
 fn handle_csv(data: Data) -> &'static str {
+    let mut stream = data.open();
+    let mut csv = String::new();
+    stream.read_to_string(&mut csv);
+
+    println!("{}", csv);
     return "Recieved text/csv";
 }
 
@@ -53,7 +58,9 @@ fn convert_csv_to_json(data: Data) -> &'static str {
     let mut csv = String::new();
     stream.read_to_string(&mut csv);
 
-    println!("{}", csv);
+    for s in csv.split("\n") {
+        println!("EachSlice: {}", s);
+    }
     return "Data was printed";
 }
 
