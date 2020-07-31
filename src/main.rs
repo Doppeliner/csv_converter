@@ -1,11 +1,13 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 #[macro_use] extern crate rocket;
+#[macro_use] extern crate rocket_contrib;
 
 use rocket::http::RawStr;
 use rocket::{Request, data::Data};
 use serde::Serialize;
-use rocket_contrib::json::Json;
+use serde_json::Value;
+use rocket_contrib::json::{Json, JsonValue};
 use csv::Reader;
 use csv::Error;
 use std::fs::File;
@@ -41,6 +43,14 @@ fn test_json() -> Json<Guitar> {
         }
     )
 }
+
+#[get("/json/value")]
+fn test_json_value() -> JsonValue {
+    json!({
+        "id": 83,
+        "values": [1, 2, 3, 4]
+    })
+}
     
 #[post("/submit_csv", format = "text/csv", data = "<data>")]
 fn handle_csv(data: Data) -> &'static str {
@@ -53,15 +63,63 @@ fn handle_csv(data: Data) -> &'static str {
 }
 
 #[post("/submit", data = "<data>")]
-fn convert_csv_to_json(data: Data) -> &'static str {
+fn convert_csv_to_json(data: Data) -> Result<(), Box<dyn std::error::Error>> {
     let mut stream = data.open();
     let mut csv = String::new();
     stream.read_to_string(&mut csv);
+    
 
-    for s in csv.split("\n") {
-        println!("EachSlice: {}", s);
+    let mut csv_deux = String::new();
+    let mut count = 0;
+    
+    for c in csv.lines() {
+
+        if c == "" && count != 3 {
+            break;
+        }
+
+        if count > 3 {
+            csv_deux.push_str(c);
+            csv_deux.push('\n');
+        }
+
+        count += 1;
     }
-    return "Data was printed";
+
+    let mut rdr1 = csv::Reader::from_reader(csv_deux.as_bytes());
+    let mut rdr2 = csv::Reader::from_reader(csv_deux.as_bytes());
+
+    let mut json_string = String::new();
+    let headers = rdr1.headers()?;
+
+    for result in rdr2.records() {
+        let record = result?;
+
+        json_string.push_str("{\n");
+
+        let special_iter = headers.iter().zip(record.iter());
+
+        for s in special_iter {
+            json_string.push_str(&format!("\t\"{}\": \"{}\",\n", s.0, s.1));
+        }
+
+        json_string.pop();
+        json_string.pop();
+        json_string.push('\n');
+
+        json_string.push_str("},\n");
+    }
+
+    json_string.pop();
+    json_string.pop();
+    json_string.push('\n');
+
+    let v: Value = serde_json::from_str("{\"foo\": 13, \"bar\": \"baz\"},{}")?;
+    println!("data: {:?}", v); 
+
+    //println!("{}", &json_string);
+
+    return Ok(());
 }
 
 fn main() {
@@ -70,6 +128,7 @@ fn main() {
         hello,
         hello_name,
         test_json,
+        test_json_value,
         handle_csv,
         convert_csv_to_json
     ]).launch();
