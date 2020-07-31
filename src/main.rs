@@ -12,6 +12,7 @@ use csv::Reader;
 use csv::Error;
 use std::fs::File;
 use std::io::Read;
+use std::collections::HashMap;
 
 #[derive(Serialize)]
 struct Guitar {
@@ -46,10 +47,13 @@ fn test_json() -> Json<Guitar> {
 
 #[get("/json/value")]
 fn test_json_value() -> JsonValue {
-    json!({
+    json!([{
         "id": 83,
         "values": [1, 2, 3, 4]
-    })
+    },
+    {
+        "id": 01
+    }])
 }
     
 #[post("/submit_csv", format = "text/csv", data = "<data>")]
@@ -63,7 +67,7 @@ fn handle_csv(data: Data) -> &'static str {
 }
 
 #[post("/submit", data = "<data>")]
-fn convert_csv_to_json(data: Data) -> Result<(), Box<dyn std::error::Error>> {
+fn convert_csv_to_json(data: Data) -> Result<JsonValue, Box<dyn std::error::Error>> {
     let mut stream = data.open();
     let mut csv = String::new();
     stream.read_to_string(&mut csv);
@@ -90,6 +94,9 @@ fn convert_csv_to_json(data: Data) -> Result<(), Box<dyn std::error::Error>> {
     let mut rdr2 = csv::Reader::from_reader(csv_deux.as_bytes());
 
     let mut json_string = String::new();
+
+    json_string.push_str("[");
+
     let headers = rdr1.headers()?;
 
     for result in rdr2.records() {
@@ -112,14 +119,15 @@ fn convert_csv_to_json(data: Data) -> Result<(), Box<dyn std::error::Error>> {
 
     json_string.pop();
     json_string.pop();
-    json_string.push('\n');
+    json_string.push_str("]\n");
+ 
+    println!("{}", &json_string);
+    let v: Value = serde_json::from_str(&json_string)?;
+    println!("{:?}", &v);
+    let mut j = json!(v);
+    println!("{:?}", &j);
 
-    let v: Value = serde_json::from_str("{\"foo\": 13, \"bar\": \"baz\"},{}")?;
-    println!("data: {:?}", v); 
-
-    //println!("{}", &json_string);
-
-    return Ok(());
+    return Ok(j);
 }
 
 fn main() {
