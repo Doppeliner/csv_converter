@@ -1,31 +1,26 @@
 #![feature(proc_macro_hygiene, decl_macro)]
+#![warn(clippy::all)] 
+#![warn(rust_2018_idioms)] 
 
 #[macro_use]
 extern crate rocket;
 #[macro_use]
 extern crate rocket_contrib;
 
-use csv::Error;
-use csv::Reader;
-use rocket::http::RawStr;
-use rocket::{data::Data, Request};
-use rocket_contrib::json::{Json, JsonValue};
-use serde::Serialize;
+use rocket::data::Data;
+use rocket_contrib::json::JsonValue;
 use serde_json::Value;
-use std::collections::HashMap;
-use std::fs::File;
 use std::io::Read;
 
 #[post("/submit", data = "<data>")]
 fn convert_csv_to_json(data: Data) -> Result<JsonValue, Box<dyn std::error::Error>> {
     let mut stream = data.open();
     let mut csv = String::new();
-    stream.read_to_string(&mut csv);
+    stream.read_to_string(&mut csv)?;
 
     let mut csv_deux = String::new();
-    let mut count = 0;
 
-    for c in csv.lines() {
+    for (count, c) in csv.lines().enumerate() {
         if c == "" && count != 3 {
             break;
         }
@@ -34,8 +29,6 @@ fn convert_csv_to_json(data: Data) -> Result<JsonValue, Box<dyn std::error::Erro
             csv_deux.push_str(c);
             csv_deux.push('\n');
         }
-
-        count += 1;
     }
 
     let mut rdr1 = csv::Reader::from_reader(csv_deux.as_bytes());
@@ -70,9 +63,9 @@ fn convert_csv_to_json(data: Data) -> Result<JsonValue, Box<dyn std::error::Erro
     json_string.push_str("]\n");
 
     let v: Value = serde_json::from_str(&json_string)?;
-    let mut j = json!(v);
+    let j = json!(v);
 
-    return Ok(j);
+    Ok(j)
 }
 
 fn main() {
