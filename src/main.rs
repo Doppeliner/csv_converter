@@ -15,14 +15,16 @@ use std::io::Read;
 #[post("/submit", data = "<data>")]
 fn convert_csv_to_json(data: Data) -> Result<JsonValue, Box<dyn std::error::Error>> {
     let mut stream = data.open();
-    let mut csv = String::new();
-    stream.read_to_string(&mut csv)?;
+    let mut csv_stream = String::new();
+    stream.read_to_string(&mut csv_stream)?;
 
-    let mut csv_deux = String::new();
+    println!("{}", &csv_stream);
+
+    let mut csv_trimmed = String::new();
 
     let mut csv_id = String::new();
 
-    for (count, c) in csv.lines().enumerate() {
+    for (count, c) in csv_stream.lines().enumerate() {
 
         if count == 0 {
             csv_id.push_str(&c);
@@ -33,13 +35,13 @@ fn convert_csv_to_json(data: Data) -> Result<JsonValue, Box<dyn std::error::Erro
         }
 
         if count > 3 {
-            csv_deux.push_str(c);
-            csv_deux.push('\n');
+            csv_trimmed.push_str(c);
+            csv_trimmed.push('\n');
         }
     }
 
-    let mut rdr1 = csv::Reader::from_reader(csv_deux.as_bytes());
-    let mut rdr2 = csv::Reader::from_reader(csv_deux.as_bytes());
+    let mut rdr1 = csv::Reader::from_reader(csv_trimmed.as_bytes());
+    let mut rdr2 = csv::Reader::from_reader(csv_trimmed.as_bytes());
 
     let mut json_string = String::new();
 
