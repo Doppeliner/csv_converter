@@ -20,8 +20,15 @@ fn convert_csv_to_json(data: Data) -> Result<JsonValue, Box<dyn std::error::Erro
 
     let mut csv_deux = String::new();
 
+    let mut csv_id = String::new();
+
     for (count, c) in csv.lines().enumerate() {
-        if c == "" && count != 3 {
+
+        if count == 0 {
+            csv_id.push_str(&c);
+        }
+
+        if (c.contains(&csv_id) || c == "")  && count != 3 && count != 0 {
             break;
         }
 
