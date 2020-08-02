@@ -76,30 +76,30 @@ fn trim_data(data: Data, content_type: &str) -> Result<String, Status> {
     Ok(data_trimmed)
 }
 
-///Returns a string containing a list of JSON objects when given an input string containing CSV
-///records
+///Returns a serde_json Value from a given string of CSV records
 ///
 ///# Arguments
 ///
 ///* `csv` - A string containing a list of CSV records. Headers and Entries are delimited by commas
 ///while records are delimited by newline characters
 fn csv_string_to_json_value(csv: String) -> Result<Value, Status> {
-    //Creating two readers so we can iterate through Reader.headers() and Reader.records()
-    //simultaneously without borrowing conflicts
+    
     let mut rdr = Reader::from_reader(csv.as_bytes());
-
-    //Transforming the data from a CSV string to a JSON style string
+    
+    //The final list of JSON objects
     let mut objects_vec = Vec::new();
 
+    //Cloning the headers from the reader to prevent borrowing errors later on
     let headers = rdr.headers().map_err(|_| Status::UnprocessableEntity)?.clone();
 
     for result in rdr.records() {
         let record = result.map_err(|_| Status::UnprocessableEntity)?;
 
+        //This represents an individial JSON Object converted from a single CSV record
         let mut object_map = serde_json::Map::new();
 
-        //Zipping the headers and records together so as we iterate through the records, we can
-        //concatenate the matching header easily
+        //Zipping the headers and records together so as we iterate through the records, we have
+        //easier access to the individual entry and the matching header
         let zipped_iter = headers.iter().zip(record.iter());
 
         for z in zipped_iter {
@@ -118,4 +118,31 @@ fn main() {
     rocket::ignite()
         .mount("/", routes![convert_csv_to_json])
         .launch();
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn csv_string_to_json_value_success() {
+        assert_eq!(
+            super::csv_string_to_json_value("ID,Name\n1,Bob".to_string()),
+            Ok(serde_json::Value::Array(vec![serde_json::json!({ "ID" : "1", "Name" : "Bob"})]))
+        )
+    }
+
+    #[test]
+    fn csv_string_to_json_value_record_failure() {
+        assert_eq!(
+            super::csv_string_to_json_value("ID,Name\n1".to_string()),
+            Err(rocket::http::Status::UnprocessableEntity)
+        )
+    }
+
+    #[test]
+    fn csv_string_to_json_value_header_failure() {
+        assert_eq!(
+            super::csv_string_to_json_value("ID\n1,2".to_string()),
+            Err(rocket::http::Status::UnprocessableEntity)
+        )
+    }
 }
