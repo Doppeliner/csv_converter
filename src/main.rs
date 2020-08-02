@@ -20,7 +20,11 @@ use std::io::Read;
 ///* `data` - The raw form-data passed in from the post request, retrieved by Rocket
 #[post("/submit", data = "<data>")]
 fn convert_csv_to_json(data: Data) -> Result<JsonValue, Status> {
-    let csv_trimmed: String = trim_data(data, "text/csv")?;
+    let mut stream = data.open();
+    let mut data_string = String::new();
+    stream.read_to_string(&mut data_string);
+
+    let csv_trimmed: String = trim_data_string(data_string, "text/csv".to_string())?;
     let serde_json_value: Value = csv_string_to_json_value(csv_trimmed)?;
 
     //Converting from a serde_json Value to a rocket JsonValue
@@ -39,10 +43,8 @@ fn convert_csv_to_json(data: Data) -> Result<JsonValue, Status> {
 ///* `content_type` - A string that defines the expected content type. If you recieve a file that
 ///is not of the expected type, it will throw an Unprocessible Entity error. If passed an empty
 ///string "", it will allow any file type.
-fn trim_data(data: Data, content_type: &str) -> Result<String, Status> {
-    let mut stream = data.open();
-    let mut data_string = String::new();
-    stream.read_to_string(&mut data_string);
+fn trim_data_string(data_string: String, content_type: String) -> Result<String, Status> {
+    println!("{}", data_string);
 
     let mut data_id = String::new();
     let mut data_trimmed = String::new();
@@ -142,6 +144,36 @@ mod tests {
     fn csv_string_to_json_value_header_failure() {
         assert_eq!(
             super::csv_string_to_json_value("ID\n1,2".to_string()),
+            Err(rocket::http::Status::UnprocessableEntity)
+        )
+    }
+
+    #[test]
+    fn trim_data_string_csv_success() {
+        let input = "--01\nContent-Info\nContent-Type: text/csv\n\nID,Name\n1,Bob\n--01";
+        println!("{}", input);
+        assert_eq!(
+            super::trim_data_string(input.to_string(), "text/csv".to_string()),
+            Ok("ID,Name\n1,Bob\n".to_string())
+        )
+    }
+
+    #[test]
+    fn trim_data_string_csv_success_no_content_type() {
+        let input = "--01\nContent-Info\nContent-Type: text/txt\n\nID,Name\n1,Bob\n--01";
+        println!("{}", input);
+        assert_eq!(
+            super::trim_data_string(input.to_string(), "".to_string()),
+            Ok("ID,Name\n1,Bob\n".to_string())
+        )
+    }
+
+    #[test]
+    fn trim_data_string_csv_failure() {
+        let input = "--01\nContent-Info\nContent-Type: text/txt\n\nID,Name\n1,Bob\n--01";
+        println!("{}", input);
+        assert_eq!(
+            super::trim_data_string(input.to_string(), "text/csv".to_string()),
             Err(rocket::http::Status::UnprocessableEntity)
         )
     }
