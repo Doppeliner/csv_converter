@@ -1,18 +1,18 @@
 #![feature(proc_macro_hygiene, decl_macro)]
-#![warn(clippy::all)] 
-#![warn(rust_2018_idioms)] 
+#![warn(clippy::all)]
+#![warn(rust_2018_idioms)]
 
 #[macro_use]
 extern crate rocket;
 #[macro_use]
 extern crate rocket_contrib;
 
+use csv::Reader;
 use rocket::data::Data;
+use rocket::http::Status;
 use rocket_contrib::json::JsonValue;
 use serde_json::Value;
 use std::io::Read;
-use csv::Reader;
-use rocket::http::Status;
 
 ///Takes a CSV from a POST request and responds with a list of JSON Objects constructed from those
 ///records stored in a Rocket JsonValue
@@ -22,14 +22,13 @@ use rocket::http::Status;
 ///* `data` - The raw form-data passed in from the post request, retrieved by Rocket
 #[post("/submit", data = "<data>")]
 fn convert_csv_to_json(data: Data) -> Result<JsonValue, Status> {
-
     let csv_trimmed: String = trim_data(data, "text/csv")?;
     let json_string: String = csv_string_to_json_string(csv_trimmed)?;
 
     //Converting from String to a serde_json Value
     let v: Value = match serde_json::from_str(&json_string) {
         Ok(value) => value,
-        Err(_value) => return Err(Status::InternalServerError)
+        Err(_value) => return Err(Status::InternalServerError),
     };
 
     //Converting from a serde_json Value to a rocket JsonValue
@@ -48,7 +47,7 @@ fn convert_csv_to_json(data: Data) -> Result<JsonValue, Status> {
 ///* `content_type` - A string that defines the expected content type. If you recieve a file that
 ///is not of the expected type, it will throw an Unprocessible Entity error. If passed an empty
 ///string "", it will allow any file type.
-fn trim_data(data:Data, content_type: &str) -> Result<String, Status> { 
+fn trim_data(data: Data, content_type: &str) -> Result<String, Status> {
     let mut stream = data.open();
     let mut data_string = String::new();
     stream.read_to_string(&mut data_string);
@@ -93,7 +92,6 @@ fn trim_data(data:Data, content_type: &str) -> Result<String, Status> {
 ///* `csv` - A string containing a list of CSV records. Headers and Entries are delimited by commas
 ///while records are delimited by newline characters
 fn csv_string_to_json_string(csv: String) -> Result<String, Status> {
-
     //Creating two readers so we can iterate through Reader.headers() and Reader.records()
     //simultaneously without borrowing conflicts
     let mut rdr1 = Reader::from_reader(csv.as_bytes());
@@ -106,13 +104,13 @@ fn csv_string_to_json_string(csv: String) -> Result<String, Status> {
 
     let headers = match rdr1.headers() {
         Ok(csv_headers) => csv_headers,
-        Err(_csv_headers) => return Err(Status::UnprocessableEntity)
+        Err(_csv_headers) => return Err(Status::UnprocessableEntity),
     };
 
     for result in rdr2.records() {
-        let record = match result{
+        let record = match result {
             Ok(v) => v,
-            Err(_v) => return Err(Status::UnprocessableEntity)
+            Err(_v) => return Err(Status::UnprocessableEntity),
         };
 
         json_string.push_str("{\n");
@@ -142,11 +140,6 @@ fn csv_string_to_json_string(csv: String) -> Result<String, Status> {
 ///Calls the ignite function from Rocket to start the server
 fn main() {
     rocket::ignite()
-        .mount(
-            "/",
-            routes![
-                convert_csv_to_json
-            ],
-        )
+        .mount("/", routes![convert_csv_to_json])
         .launch();
 }
