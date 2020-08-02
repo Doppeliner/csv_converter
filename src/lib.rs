@@ -9,16 +9,12 @@ use rocket_contrib::json::JsonValue;
 use serde_json::Value;
 use std::io::Read;
 
-#[macro_use]
-extern crate rocket;
-
 ///Takes a CSV from a POST request and responds with a list of JSON Objects constructed from those
 ///records stored in a Rocket JsonValue
 ///
 ///# Arguments
 ///
 ///* `data` - The raw form-data passed in from the post request, retrieved by Rocket
-#[post("/submit", data = "<data>")]
 pub fn convert_csv_to_json(data: Data) -> Result<JsonValue, Status> {
     let mut stream = data.open();
     let mut data_string = String::new();
@@ -46,8 +42,6 @@ pub fn convert_csv_to_json(data: Data) -> Result<JsonValue, Status> {
 ///is not of the expected type, it will throw an Unprocessible Entity error. If passed an empty
 ///string "", it will allow any file type.
 fn trim_data_string(data_string: String, content_type: String) -> Result<String, Status> {
-    println!("{}", data_string);
-
     let mut data_id = String::new();
     let mut data_trimmed = String::new();
 
