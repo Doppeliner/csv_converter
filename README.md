@@ -1,6 +1,6 @@
 # csv_converter
 
-This is a simple API to easily convert CSV files into a JSON response via a REST endpoint. Additionally, this endpoint will check and ensure that you have submitted a CSV file and that it is formatted correctly. 
+This is a simple API to easily convert CSV files into a JSON response via a REST endpoint. Additionally, this endpoint will check and ensure that you have submitted a CSV file and that it is formatted correctly. Due to reliance on the Rocket API, requests are automatically handled asynchronously using multiple threads.
 
 ## Usage
 
