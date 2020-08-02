@@ -6,12 +6,12 @@
 extern crate rocket;
 
 use rocket::data::Data;
-use rocket_contrib::json::JsonValue;
 use rocket::http::Status;
+use rocket_contrib::json::JsonValue;
 
 //This is abstracted so the user can define their own routes if they use this library
 #[post("/submit", data = "<data>")]
-fn call_convert_csv_to_json(data: Data) -> Result<JsonValue, Status>{
+fn call_convert_csv_to_json(data: Data) -> Result<JsonValue, Status> {
     Ok(csv_converter::convert_csv_to_json(data)?)
 }
 
