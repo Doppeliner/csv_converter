@@ -3,10 +3,10 @@
 #![warn(rust_2018_idioms)]
 
 use csv::Reader;
-use rocket::http::Status;
-use serde_json::Value;
 use rocket::data::Data;
+use rocket::http::Status;
 use rocket_contrib::json::JsonValue;
+use serde_json::Value;
 use std::io::Read;
 
 #[macro_use]
@@ -22,7 +22,9 @@ extern crate rocket;
 pub fn convert_csv_to_json(data: Data) -> Result<JsonValue, Status> {
     let mut stream = data.open();
     let mut data_string = String::new();
-    stream.read_to_string(&mut data_string).map_err(|_| Status::UnprocessableEntity)?;
+    stream
+        .read_to_string(&mut data_string)
+        .map_err(|_| Status::UnprocessableEntity)?;
 
     let csv_trimmed: String = trim_data_string(data_string, "text/csv".to_string())?;
     let serde_json_value: Value = csv_string_to_json_value(csv_trimmed)?;
@@ -85,14 +87,16 @@ fn trim_data_string(data_string: String, content_type: String) -> Result<String,
 ///* `csv` - A string containing a list of CSV records. Headers and Entries are delimited by commas
 ///while records are delimited by newline characters
 fn csv_string_to_json_value(csv: String) -> Result<Value, Status> {
-
     let mut rdr = Reader::from_reader(csv.as_bytes());
 
     //The final list of JSON objects
     let mut objects_vec = Vec::new();
 
     //Cloning the headers from the reader to prevent borrowing errors later on
-    let headers = rdr.headers().map_err(|_| Status::UnprocessableEntity)?.clone();
+    let headers = rdr
+        .headers()
+        .map_err(|_| Status::UnprocessableEntity)?
+        .clone();
 
     for result in rdr.records() {
         let record = result.map_err(|_| Status::UnprocessableEntity)?;
@@ -121,7 +125,9 @@ mod tests {
     fn csv_string_to_json_value_success() {
         assert_eq!(
             super::csv_string_to_json_value("ID,Name\n1,Bob".to_string()),
-            Ok(serde_json::Value::Array(vec![serde_json::json!({ "ID" : "1", "Name" : "Bob"})]))
+            Ok(serde_json::Value::Array(vec![
+                serde_json::json!({ "ID" : "1", "Name" : "Bob"})
+            ]))
         )
     }
 
@@ -171,4 +177,3 @@ mod tests {
         )
     }
 }
-

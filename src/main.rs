@@ -11,4 +11,3 @@ fn main() {
         .mount("/", routes![csv_converter::convert_csv_to_json])
         .launch();
 }
-
