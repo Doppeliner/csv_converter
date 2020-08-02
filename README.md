@@ -4,7 +4,7 @@ This is a simple API to easily convert CSV files into a JSON response via a REST
 
 ## Usage
 
-### Running this crate standalone
+### Running this as a standalone package
 
 To use this crate standalone, simply clone this project and run `cargo run` in the root folder. You're also able to run unit tests by running `cargo test` and look at the documentation with `cargo doc --open`. By default, the only endpoint is `http://localhost:8000/submit` and will throw a `400 Bad Request error` if no File is provided in the form data of the request. This will also throw a `422 Unprocessable Entity` error if the file is not a CSV file, or is not formatted correctly. If you submit multiple files at once, only the first file is considered and the rest are ignored.
 
