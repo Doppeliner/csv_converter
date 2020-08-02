@@ -4,8 +4,6 @@
 
 #[macro_use]
 extern crate rocket;
-#[macro_use]
-extern crate rocket_contrib;
 
 use csv::Reader;
 use rocket::data::Data;
@@ -23,16 +21,10 @@ use std::io::Read;
 #[post("/submit", data = "<data>")]
 fn convert_csv_to_json(data: Data) -> Result<JsonValue, Status> {
     let csv_trimmed: String = trim_data(data, "text/csv")?;
-    let json_string: String = csv_string_to_json_string(csv_trimmed)?;
-
-    //Converting from String to a serde_json Value
-    let v: Value = match serde_json::from_str(&json_string) {
-        Ok(value) => value,
-        Err(_value) => return Err(Status::InternalServerError),
-    };
+    let serde_json_value: Value = csv_string_to_json_value(csv_trimmed)?;
 
     //Converting from a serde_json Value to a rocket JsonValue
-    let rocket_json_value = json!(v);
+    let rocket_json_value = rocket_contrib::json!(serde_json_value);
 
     Ok(rocket_json_value)
 }
@@ -91,50 +83,34 @@ fn trim_data(data: Data, content_type: &str) -> Result<String, Status> {
 ///
 ///* `csv` - A string containing a list of CSV records. Headers and Entries are delimited by commas
 ///while records are delimited by newline characters
-fn csv_string_to_json_string(csv: String) -> Result<String, Status> {
+fn csv_string_to_json_value(csv: String) -> Result<Value, Status> {
     //Creating two readers so we can iterate through Reader.headers() and Reader.records()
     //simultaneously without borrowing conflicts
-    let mut rdr1 = Reader::from_reader(csv.as_bytes());
-    let mut rdr2 = Reader::from_reader(csv.as_bytes());
+    let mut rdr = Reader::from_reader(csv.as_bytes());
 
     //Transforming the data from a CSV string to a JSON style string
-    let mut json_string = String::new();
+    let mut objects_vec = Vec::new();
 
-    json_string.push_str("[");
+    let headers = rdr.headers().map_err(|_| Status::UnprocessableEntity)?.clone();
 
-    let headers = match rdr1.headers() {
-        Ok(csv_headers) => csv_headers,
-        Err(_csv_headers) => return Err(Status::UnprocessableEntity),
-    };
+    for result in rdr.records() {
+        let record = result.map_err(|_| Status::UnprocessableEntity)?;
 
-    for result in rdr2.records() {
-        let record = match result {
-            Ok(v) => v,
-            Err(_v) => return Err(Status::UnprocessableEntity),
-        };
-
-        json_string.push_str("{\n");
+        let mut object_map = serde_json::Map::new();
 
         //Zipping the headers and records together so as we iterate through the records, we can
         //concatenate the matching header easily
         let zipped_iter = headers.iter().zip(record.iter());
 
         for z in zipped_iter {
-            json_string.push_str(&format!("\t\"{}\": \"{}\",\n", z.0, z.1));
+            object_map.insert(z.0.to_string(), serde_json::json!(z.1));
         }
 
-        //Popping twice to remove the trailing comma on the last field
-        json_string.pop();
-        json_string.pop();
-        json_string.push_str("\n},\n");
+        objects_vec.push(serde_json::Value::Object(object_map));
     }
 
-    //Popping twice to remove the trailing comma on the last object
-    json_string.pop();
-    json_string.pop();
-    json_string.push_str("]\n");
-
-    Ok(json_string)
+    let json_val = serde_json::Value::Array(objects_vec);
+    Ok(json_val)
 }
 
 ///Calls the ignite function from Rocket to start the server
